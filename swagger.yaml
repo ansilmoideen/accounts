@@ -176,7 +176,7 @@ paths:
   /api/v1/taxes/gst-setup:
     put:
       summary: Update GST Rates
-      tags:
+      tags: [Taxation]
       requestBody:
         required: true
         content:
@@ -189,7 +189,7 @@ paths:
                 hsn_sac_code: { type: string }
                 taxability:
                   type: string
-                  enum:
+                  enum: [Taxable, Nil Rated, Exempt, Non-GST]
                 tax_rates: { type: object }
                 reverse_charge_applicable: { type: boolean }
       responses:
@@ -199,7 +199,7 @@ paths:
   /api/v1/taxes/e-invoice/generate:
     post:
       summary: Generate E-Invoice (IRP integration)
-      tags:
+      tags: [Taxation]
       requestBody:
         required: true
         content:
@@ -216,7 +216,7 @@ paths:
   /api/v1/taxes/returns/gstr1:
     get:
       summary: Get GSTR-1 Return Payload
-      tags:
+      tags: [Taxation]
       parameters:
         - in: query
           name: from_date
@@ -233,7 +233,7 @@ paths:
   /api/v1/taxes/reconciliation/gstr2b:
     post:
       summary: Auto-reconcile ITC against GSTR-2B JSON
-      tags:
+      tags: [Taxation]
       requestBody:
         required: true
         content:
@@ -278,7 +278,7 @@ paths:
                 type_name: { type: string }
                 attendance_type:
                   type: string
-                  enum:
+                  enum: [Present, Absent, Leave with Pay, Leave without Pay, Production]
       responses:
         '201':
           description: Successfully created
@@ -297,13 +297,13 @@ paths:
                 pay_head_name: { type: string }
                 pay_head_type:
                   type: string
-                  enum:
+                  enum: [Earnings, Deductions, Employees Statutory Contributions, Employer Statutory Levies]
                 calculation_type:
                   type: string
-                  enum:
+                  enum: [As Computed Value, As User Defined Value, Flat Rate, On Attendance, On Production]
                 calculation_period:
                   type: string
-                  enum:
+                  enum: [Days, Months, Weeks, Fortnights]
                 computation_info: { type: object }
       responses:
         '201':
@@ -351,7 +351,7 @@ paths:
   /api/v1/reports/balance-sheet:
     get:
       summary: Get Balance Sheet
-      tags:
+      tags: [Reporting]
       parameters:
         - in: query
           name: as_of_date
@@ -367,7 +367,7 @@ paths:
   /api/v1/reports/profit-and-loss:
     get:
       summary: Get Profit and Loss Statement
-      tags:
+      tags: [Reporting]
       parameters:
         - in: query
           name: from_date
@@ -384,13 +384,13 @@ paths:
   /api/v1/reports/outstanding:
     get:
       summary: Get Receivables/Payables Aging
-      tags:
+      tags: [Reporting]
       parameters:
         - in: query
           name: type
           schema:
             type: string
-            enum:
+            enum: [Receivable, Payable]
           required: true
         - in: query
           name: aging_intervals
@@ -404,7 +404,7 @@ paths:
   /api/v1/reports/daybook:
     get:
       summary: Get Day Book (Chronological transactions)
-      tags:
+      tags: [Reporting]
       parameters:
         - in: query
           name: from_date
@@ -419,7 +419,7 @@ paths:
   /api/v1/reports/stock-summary:
     get:
       summary: Get Real-time Stock Summary
-      tags:
+      tags: [Reporting]
       responses:
         '200':
           description: Location and item-wise stock valuation
@@ -455,7 +455,7 @@ components:
         alias: { type: string }
         nature_of_group:
           type: string
-          enum:
+          enum: [Assets, Liabilities, Income, Expenses]
         affect_gross_profit: { type: boolean }
 
     AccountLedger:
@@ -467,7 +467,7 @@ components:
         opening_balance: { type: number }
         dr_cr_indicator:
           type: string
-          enum:
+          enum: [Dr, Cr]
         maintain_bill_wise: { type: boolean }
         credit_days: { type: integer }
         mailing_details: { type: object }
@@ -484,7 +484,7 @@ components:
         uom_id: { type: string, format: uuid }
         costing_method:
           type: string
-          enum:
+          enum: [FIFO, LIFO, Weighted Average, Monthly Average]
         maintain_batches: { type: boolean }
         track_expiry_dates: { type: boolean }
         reorder_level: { type: integer }
@@ -496,7 +496,7 @@ components:
       properties:
         voucher_type:
           type: string
-          enum:
+          enum: [Journal, Sales, Purchase, Payment, Receipt, Contra, Credit Note, Debit Note]
         voucher_date: { type: string, format: date }
         voucher_number: { type: string }
         narration: { type: string }
@@ -513,7 +513,7 @@ components:
         ledger_id: { type: string, format: uuid }
         dr_cr_indicator:
           type: string
-          enum:
+          enum: [Dr, Cr]
         amount: { type: number }
         cost_center_allocations:
           type: array
@@ -544,7 +544,7 @@ components:
       properties:
         allocation_type:
           type: string
-          enum:
+          enum: [New Ref, Agst Ref, Advance, On Account]
         reference_name: { type: string }
         amount: { type: number }
         credit_period: { type: integer }
