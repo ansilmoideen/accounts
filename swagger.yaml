@@ -1,162 +1,318 @@
 openapi: 3.0.0
 info:
-  title: Cloud Accounting API
-  description: Comprehensive API specification for a cloud accounting system, providing deterministic endpoints for ledgers, vouchers, inventory, taxation, payroll, and reporting.
+  title: Cloud Accounting Systems API
   version: 1.0.0
+  description: >
+    API Architecture and Specification for Cloud Accounting Systems. This specification provides deterministic endpoints, strict data typing, robust error handling, and comprehensive relational mapping.
 servers:
-  - url: https://api.accountingcloud.com
+  - url: https://api.example.com
 paths:
-  /api/v1/masters/groups:
+  /accounts/v1/masters/groups:
     post:
-      summary: Create an Account Group
-      tags: [Accounting Masters]
+      summary: Create Account Group
+      description: Allows the client application to retrieve predefined groups or create custom sub-groups to track specific operational verticals.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AccountGroup'
+              type: object
+              required:
+                - group_name
+                - parent_group_id
+              properties:
+                group_name:
+                  type: string
+                  description: Unique identifier for the account.
+                parent_group_id:
+                  type: string
+                  format: uuid
+                  description: Links the new group to a parent within the 28 predefined hierarchies.
+                alias:
+                  type: string
+                  description: A secondary, shorthand name.
+                nature_of_group:
+                  type: string
+                  enum:
+                  description: Defines the primary financial behavior.
+                affect_gross_profit:
+                  type: boolean
+                  description: Determines if the group's balances impact the Trading Account.
       responses:
         '201':
-          description: Successfully created
+          description: Account group created successfully.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreationResponse'
+                type: object
+                properties:
+                  group_id:
+                    type: string
+                    format: uuid
+                  group_name:
+                    type: string
+                  status:
+                    type: string
+                  hierarchy_path:
+                    type: string
+                  nature_of_group:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
 
-  /api/v1/masters/ledgers:
+  /accounts/v1/masters/ledgers:
     post:
-      summary: Create an Account Ledger
-      tags: [Accounting Masters]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AccountLedger'
-      responses:
-        '201':
-          description: Successfully created
-          
-  /api/v1/masters/cost-centers:
-    post:
-      summary: Create a Cost Center
-      tags: [Accounting Masters]
+      summary: Create Account Ledger
+      description: Provision the supplier's account before recording the purchase voucher.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - ledger_name
+                - parent_group_id
               properties:
-                cost_center_name: { type: string }
-                category_id: { type: string, format: uuid }
-                parent_center_id: { type: string, format: uuid }
+                ledger_name:
+                  type: string
+                parent_group_id:
+                  type: string
+                  format: uuid
+                opening_balance:
+                  type: number
+                  format: float
+                dr_cr_indicator:
+                  type: string
+                  enum:
+                maintain_bill_wise:
+                  type: boolean
+                credit_days:
+                  type: integer
+                mailing_details:
+                  type: object
+                  properties:
+                    address: { type: string }
+                    state: { type: string }
+                    country: { type: string }
+                    pin_code: { type: string }
+                tax_information:
+                  type: object
+                  properties:
+                    gstin: { type: string }
+                    pan: { type: string }
+                    registration_type: { type: string }
+                bank_details:
+                  type: object
+                  properties:
+                    account_number: { type: string }
+                    ifsc_code: { type: string }
+                    bank_name: { type: string }
       responses:
         '201':
-          description: Successfully created
+          description: Ledger created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ledger_id: { type: string, format: uuid }
+                  ledger_name: { type: string }
+                  status: { type: string }
+                  tax_compliance_status: { type: string }
+                  bank_verification_status: { type: string }
+                  opening_balance_recorded: { type: number, format: float }
+                  created_at: { type: string, format: date-time }
 
-  /api/v1/inventory/uom:
+  /accounts/v1/masters/cost-centers:
     post:
-      summary: Create Unit of Measurement
-      tags: [Inventory Masters]
+      summary: Create Cost Center
+      description: Cost Centers allow for the multi-dimensional tracking of expenses and revenues.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - cost_center_name
+                - category_id
               properties:
-                symbol: { type: string }
-                formal_name: { type: string }
-                decimal_places: { type: integer }
+                cost_center_name:
+                  type: string
+                category_id:
+                  type: string
+                  format: uuid
+                parent_center_id:
+                  type: string
+                  format: uuid
       responses:
         '201':
-          description: Successfully created
+          description: Cost center created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cost_center_id: { type: string, format: uuid }
+                  cost_center_name: { type: string }
+                  status: { type: string }
+                  allocation_tree_depth: { type: integer }
+                  category_association: { type: string, format: uuid }
+                  created_at: { type: string, format: date-time }
 
-  /api/v1/inventory/godowns:
+  /accounts/v1/inventory/items:
     post:
-      summary: Create a Godown/Location
-      tags: [Inventory Masters]
+      summary: Create Stock Item
+      description: The Stock Item master represents the individual products manufactured, bought, or sold.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - item_name
+                - costing_method
+                - gst_setup
               properties:
-                godown_name: { type: string }
-                parent_godown_id: { type: string, format: uuid }
-                address_details: { type: object }
+                item_name: { type: string }
+                part_number: { type: string }
+                stock_group_id: { type: string, format: uuid }
+                costing_method:
+                  type: string
+                  enum:
+                gst_setup:
+                  type: object
+                  properties:
+                    hsn_sac_code: { type: string }
+                    tax_rates:
+                      type: object
+                      properties:
+                        igst: { type: number, format: float }
+                        cgst: { type: number, format: float }
+                        sgst: { type: number, format: float }
       responses:
         '201':
-          description: Successfully created
+          description: Stock item created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  item_id: { type: string, format: uuid }
+                  item_name: { type: string }
+                  status: { type: string }
+                  hsn_validation: { type: boolean }
+                  valuation_engine_ready: { type: boolean }
+                  tax_rate_locked: { type: boolean }
+                  created_at: { type: string, format: date-time }
 
-  /api/v1/inventory/items:
+  /accounts/v1/vouchers:
     post:
-      summary: Create a Stock Item
-      tags: [Inventory Masters]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StockItem'
-      responses:
-        '201':
-          description: Successfully created
-
-  /api/v1/inventory/bom:
-    post:
-      summary: Create Bill of Materials (BOM)
-      tags: [Inventory Masters]
+      summary: Create Voucher
+      description: Single, unified endpoint that dynamically alters its validation rules based on the voucher_type parameter.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - voucher_type
+                - voucher_date
+                - idempotency_key
               properties:
-                finished_good_item_id: { type: string, format: uuid }
-                bom_name: { type: string }
-                components:
+                voucher_type:
+                  type: string
+                  enum:
+                voucher_date: { type: string, format: date }
+                voucher_number: { type: string }
+                narration: { type: string }
+                idempotency_key: { type: string }
+                ledger_entries:
                   type: array
                   items:
                     type: object
+                    required:
+                      - ledger_id
+                      - dr_cr_indicator
+                      - amount
                     properties:
-                      item_id: { type: string, format: uuid }
-                      godown_id: { type: string, format: uuid }
-                      quantity: { type: number }
+                      ledger_id: { type: string, format: uuid }
+                      dr_cr_indicator:
+                        type: string
+                        enum:
+                      amount: { type: number, format: float }
+                      cost_center_allocations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            cost_center_name: { type: string }
+                            category_id: { type: string, format: uuid }
+                            parent_center_id: { type: string, format: uuid }
+                      inventory_allocations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            item_id: { type: string, format: uuid }
+                            quantity: { type: number, format: float }
+                            rate: { type: number, format: float }
+                            amount: { type: number, format: float }
+                            batch_details:
+                              type: object
+                              properties:
+                                batch_name: { type: string }
+                                manufacturing_date: { type: string, format: date }
+                      bill_allocations:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            allocation_type:
+                              type: string
+                              enum:
+                            reference_name: { type: string }
+                            amount: { type: number, format: float }
+                            credit_period: { type: integer }
       responses:
         '201':
-          description: Successfully created
+          description: Voucher successfully posted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  voucher_id: { type: string, format: uuid }
+                  voucher_number: { type: string }
+                  transaction_status: { type: string }
+                  idempotency_key: { type: string }
+                  mathematical_balance:
+                    type: object
+                    properties:
+                      total_debit: { type: number, format: float }
+                      total_credit: { type: number, format: float }
+                      is_balanced: { type: boolean }
+                  posted_at: { type: string, format: date-time }
 
-  /api/v1/vouchers:
+  /accounts/v1/invoices/generate:
     post:
-      summary: Post a Transaction Voucher
-      tags: [Vouchers]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Voucher'
-      responses:
-        '201':
-          description: Voucher posted successfully
-        '400':
-          description: Validation error (e.g., Debits do not equal Credits)
-
-  /api/v1/invoices/generate:
-    post:
-      summary: Generate an Auto-Calculated GST Invoice
-      tags: [Invoicing]
+      summary: Generate Invoice
+      description: Takes raw line items and automatically calculates the complex web of applicable taxes, generating a fully compliant payload.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - party_ledger_id
+                - sales_ledger_id
+                - items
+                - place_of_supply
               properties:
                 party_ledger_id: { type: string, format: uuid }
                 sales_ledger_id: { type: string, format: uuid }
@@ -166,385 +322,371 @@ paths:
                     type: object
                     properties:
                       item_id: { type: string, format: uuid }
-                      quantity: { type: number }
-                      discount_percentage: { type: number }
+                      quantity: { type: number, format: float }
+                      discount_percentage: { type: number, format: float }
                 place_of_supply: { type: string }
       responses:
         '200':
-          description: Generated mathematical voucher payload
+          description: Returns a fully constructed, mathematically balanced voucher payload.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  draft_voucher_payload: { type: object }
+                  tax_computations:
+                    type: object
+                    properties:
+                      tax_type_applied: { type: string }
+                      total_taxable_value: { type: number, format: float }
+                      total_igst: { type: number, format: float }
+                      total_cgst: { type: number, format: float }
+                      total_sgst: { type: number, format: float }
+                      round_off_amount: { type: number, format: float }
+                  invoice_total: { type: number, format: float }
 
-  /api/v1/taxes/gst-setup:
+  /accounts/v1/taxes/gst-setup:
     put:
-      summary: Update GST Rates
-      tags: [Taxation]
+      summary: Update GST Setup
+      description: Endpoint to configure and update tax details seamlessly across stock groups, items, and ledgers.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - entity_id
+                - effective_date
+                - hsn_sac_code
+                - taxability
+                - reverse_charge_applicable
               properties:
                 entity_id: { type: string, format: uuid }
                 effective_date: { type: string, format: date }
                 hsn_sac_code: { type: string }
                 taxability:
                   type: string
-                  enum: [Taxable, Nil Rated, Exempt, Non-GST]
-                tax_rates: { type: object }
+                  enum:
+                tax_rates:
+                  type: object
+                  properties:
+                    igst: { type: number, format: float }
+                    cgst: { type: number, format: float }
+                    sgst: { type: number, format: float }
                 reverse_charge_applicable: { type: boolean }
       responses:
         '200':
-          description: GST setup updated
+          description: GST Setup updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  configuration_id: { type: string, format: uuid }
+                  entity_id: { type: string, format: uuid }
+                  applied_effective_date: { type: string, format: date }
+                  taxability_status: { type: string }
+                  status: { type: string }
 
-  /api/v1/taxes/e-invoice/generate:
+  /accounts/v1/taxes/e-invoice/generate:
     post:
-      summary: Generate E-Invoice (IRP integration)
-      tags: [Taxation]
+      summary: Generate E-Invoice
+      description: Push the data to the government portal.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              required:
+                - voucher_id
               properties:
                 voucher_id: { type: string, format: uuid }
                 distance_in_km: { type: integer }
       responses:
         '200':
-          description: IRN and QR Code generated
+          description: Returns government-issued credentials
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  irn: { type: string }
+                  qr_code: { type: string }
+                  acknowledgment_number: { type: string }
+                  acknowledgment_date: { type: string, format: date-time }
+                  status: { type: string }
+                  error_details: { type: object }
 
-  /api/v1/taxes/returns/gstr1:
+  /accounts/v1/taxes/returns/gstr1:
     get:
-      summary: Get GSTR-1 Return Payload
-      tags: [Taxation]
+      summary: Generate GSTR-1 Return
+      description: Compiles the GSTR-1 payload (outward supplies) for direct upload.
       parameters:
         - in: query
           name: from_date
-          schema: { type: string, format: date }
-          required: true
+          schema:
+            type: string
+            format: date
         - in: query
           name: to_date
-          schema: { type: string, format: date }
-          required: true
+          schema:
+            type: string
+            format: date
       responses:
         '200':
-          description: GSTR-1 structured data
-
-  /api/v1/taxes/reconciliation/gstr2b:
-    post:
-      summary: Auto-reconcile ITC against GSTR-2B JSON
-      tags: [Taxation]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              description: Raw GSTR-2B JSON from the tax portal
-      responses:
-        '200':
-          description: Reconciliation results (matched, mismatched, missing)
-
-  /api/v1/payroll/employees:
-    post:
-      summary: Create an Employee Master
-      tags: [Payroll]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                employee_name: { type: string }
-                employee_group_id: { type: string, format: uuid }
-                date_of_joining: { type: string, format: date }
-                statutory_details: { type: object }
-      responses:
-        '201':
-          description: Successfully created
-
-  /api/v1/payroll/attendance-types:
-    post:
-      summary: Create Attendance/Production Type
-      tags: [Payroll]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                type_name: { type: string }
-                attendance_type:
-                  type: string
-                  enum: [Present, Absent, Leave with Pay, Leave without Pay, Production]
-      responses:
-        '201':
-          description: Successfully created
-
-  /api/v1/payroll/payheads:
-    post:
-      summary: Create a Pay Head
-      tags: [Payroll]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                pay_head_name: { type: string }
-                pay_head_type:
-                  type: string
-                  enum: [Earnings, Deductions, Employees Statutory Contributions, Employer Statutory Levies]
-                calculation_type:
-                  type: string
-                  enum: [As Computed Value, As User Defined Value, Flat Rate, On Attendance, On Production]
-                calculation_period:
-                  type: string
-                  enum: [Days, Months, Weeks, Fortnights]
-                computation_info: { type: object }
-      responses:
-        '201':
-          description: Successfully created
-
-  /api/v1/payroll/attendance:
-    post:
-      summary: Log Employee Attendance
-      tags: [Payroll]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
+          description: A complex JSON grouping transactions exactly per government schemas.
+          content:
+            application/json:
+              schema:
                 type: object
                 properties:
-                  employee_id: { type: string, format: uuid }
-                  attendance_type_id: { type: string, format: uuid }
-                  value: { type: number }
-                  date: { type: string, format: date }
-      responses:
-        '201':
-          description: Attendance logged
+                  gstin: { type: string }
+                  fp: { type: string }
+                  b2b: { type: array, items: { type: object } }
+                  b2cl: { type: array, items: { type: object } }
+                  b2cs: { type: array, items: { type: object } }
+                  cdnr: { type: array, items: { type: object } }
+                  cdnur: { type: array, items: { type: object } }
+                  exp: { type: array, items: { type: object } }
+                  hsn: { type: object }
+                  nil: { type: object }
 
-  /api/v1/payroll/process:
+  /accounts/v1/taxes/reconciliation/gstr2b:
     post:
-      summary: Process Payroll
-      tags: [Payroll]
+      summary: Reconcile GSTR-2B
+      description: Reconciles the government data against the internal purchase books.
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              properties:
-                pay_period_start: { type: string, format: date }
-                pay_period_end: { type: string, format: date }
-                employee_group_id: { type: string, format: uuid }
+              description: GSTR-2A/2B JSON from the tax portal.
       responses:
         '200':
-          description: Payroll processed successfully
-          
-  /api/v1/reports/balance-sheet:
+          description: Reconciliation results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reconciliation_summary: { type: object }
+                  matched_invoices:
+                    type: array
+                    items: { type: string, format: uuid }
+                  mismatched_invoices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        voucher_id: { type: string, format: uuid }
+                        discrepancy_type: { type: string }
+                        portal_value: { type: number, format: float }
+                        book_value: { type: number, format: float }
+                  missing_in_books:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        portal_invoice_no: { type: string }
+                        supplier_id: { type: string }
+                  missing_in_portal:
+                    type: array
+                    items: { type: object }
+
+  /accounts/v1/reports/balance-sheet:
     get:
-      summary: Get Balance Sheet
-      tags: [Reporting]
+      summary: Balance Sheet Report
+      description: Provides a real-time, mathematically balanced snapshot of the company's assets, liabilities, and equity.
       parameters:
         - in: query
           name: as_of_date
-          schema: { type: string, format: date }
           required: true
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: format
+          schema:
+            type: string
+            enum:
         - in: query
           name: explode_flag
-          schema: { type: boolean }
+          schema:
+            type: boolean
       responses:
         '200':
           description: Balance Sheet Data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report_date: { type: string, format: date }
+                  liabilities:
+                    type: object
+                    properties:
+                      total: { type: number, format: float }
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            group_name: { type: string }
+                            balance: { type: number, format: float }
+                            ledgers: { type: array, items: { type: object } }
+                            sub_groups: { type: array, items: { type: object } }
+                  assets:
+                    type: object
+                    properties:
+                      total: { type: number, format: float }
+                      groups:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            group_name: { type: string }
+                            balance: { type: number, format: float }
+                            ledgers: { type: array, items: { type: object } }
+                            sub_groups: { type: array, items: { type: object } }
 
-  /api/v1/reports/profit-and-loss:
+  /accounts/v1/reports/profit-and-loss:
     get:
-      summary: Get Profit and Loss Statement
-      tags: [Reporting]
+      summary: Profit & Loss Report
+      description: Provides an overview of total revenue and total expenses, computing the ultimate Net Profit or Net Loss.
       parameters:
         - in: query
           name: from_date
-          schema: { type: string, format: date }
-          required: true
+          schema:
+            type: string
+            format: date
         - in: query
           name: to_date
-          schema: { type: string, format: date }
-          required: true
+          schema:
+            type: string
+            format: date
+        - in: query
+          name: detailed_view
+          schema:
+            type: boolean
       responses:
         '200':
-          description: P&L Data
+          description: Profit and Loss Data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report_from_date: { type: string, format: date }
+                  report_to_date: { type: string, format: date }
+                  trading_account:
+                    type: object
+                    properties:
+                      opening_stock: { type: number, format: float }
+                      purchases: { type: number, format: float }
+                      direct_expenses: { type: array, items: { type: object } }
+                      sales: { type: number, format: float }
+                      closing_stock: { type: number, format: float }
+                      gross_profit: { type: number, format: float }
+                  income_statement:
+                    type: object
+                    properties:
+                      indirect_expenses: { type: array, items: { type: object } }
+                  net_profit: { type: number, format: float }
 
-  /api/v1/reports/outstanding:
+  /accounts/v1/reports/outstanding:
     get:
-      summary: Get Receivables/Payables Aging
-      tags: [Reporting]
+      summary: Outstanding Receivables and Payables
+      description: Synthesizes the complex bill-wise allocations logged during voucher entry.
       parameters:
         - in: query
           name: type
+          required: true
           schema:
             type: string
-            enum: [Receivable, Payable]
-          required: true
+            enum:
         - in: query
           name: aging_intervals
           schema:
             type: array
-            items: { type: integer }
+            items:
+              type: integer
       responses:
         '200':
-          description: Outstanding bills report
+          description: Array of outstanding bills.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report_type: { type: string }
+                  total_outstanding: { type: number, format: float }
+                  aging_summary: { type: object }
+                  outstanding_bills:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        reference_name: { type: string }
+                        party_name: { type: string }
+                        pending_amount: { type: number, format: float }
+                        due_date: { type: string, format: date }
+                        overdue_by_days: { type: integer }
 
-  /api/v1/reports/daybook:
+  /accounts/v1/reports/daybook:
     get:
-      summary: Get Day Book (Chronological transactions)
-      tags: [Reporting]
-      parameters:
-        - in: query
-          name: from_date
-          schema: { type: string, format: date }
-        - in: query
-          name: to_date
-          schema: { type: string, format: date }
+      summary: Day Book Report
+      description: Returns a chronological, unedited list of all transactions for a specific date range.
       responses:
         '200':
-          description: Day Book Data
+          description: List of transactions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_transactions: { type: integer }
+                  transactions:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        transaction_date: { type: string, format: date }
+                        voucher_id: { type: string, format: uuid }
+                        voucher_number: { type: string }
+                        voucher_type: { type: string }
+                        party_ledger_name: { type: string }
+                        net_amount: { type: number, format: float }
+                        ledger_entries: { type: array, items: { type: object } }
 
-  /api/v1/reports/stock-summary:
+  /accounts/v1/reports/stock-summary:
     get:
-      summary: Get Real-time Stock Summary
-      tags: [Reporting]
+      summary: Stock Summary Report
+      description: Provides a real-time view of inventory levels, locations, and valuations.
       responses:
         '200':
-          description: Location and item-wise stock valuation
-
-  /api/v1/audit/voucher-history/{voucher_id}:
-    get:
-      summary: Get MCA-compliant Voucher Edit History
-      tags: [Audit]
-      parameters:
-        - in: path
-          name: voucher_id
-          schema: { type: string, format: uuid }
-          required: true
-      responses:
-        '200':
-          description: Array of historical voucher versions
-
-components:
-  schemas:
-    CreationResponse:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        status: { type: string }
-        created_at: { type: string, format: date-time }
-
-    AccountGroup:
-      type: object
-      required: [group_name, parent_group_id]
-      properties:
-        group_name: { type: string }
-        parent_group_id: { type: string, format: uuid }
-        alias: { type: string }
-        nature_of_group:
-          type: string
-          enum: [Assets, Liabilities, Income, Expenses]
-        affect_gross_profit: { type: boolean }
-
-    AccountLedger:
-      type: object
-      required: [ledger_name, parent_group_id]
-      properties:
-        ledger_name: { type: string }
-        parent_group_id: { type: string, format: uuid }
-        opening_balance: { type: number }
-        dr_cr_indicator:
-          type: string
-          enum: [Dr, Cr]
-        maintain_bill_wise: { type: boolean }
-        credit_days: { type: integer }
-        mailing_details: { type: object }
-        tax_information: { type: object }
-        bank_details: { type: object }
-
-    StockItem:
-      type: object
-      required: [item_name, uom_id, costing_method, gst_setup]
-      properties:
-        item_name: { type: string }
-        part_number: { type: string }
-        stock_group_id: { type: string, format: uuid }
-        uom_id: { type: string, format: uuid }
-        costing_method:
-          type: string
-          enum: [FIFO, LIFO, Weighted Average, Monthly Average]
-        maintain_batches: { type: boolean }
-        track_expiry_dates: { type: boolean }
-        reorder_level: { type: integer }
-        gst_setup: { type: object }
-
-    Voucher:
-      type: object
-      required: [voucher_type, voucher_date, idempotency_key, ledger_entries]
-      properties:
-        voucher_type:
-          type: string
-          enum: [Journal, Sales, Purchase, Payment, Receipt, Contra, Credit Note, Debit Note]
-        voucher_date: { type: string, format: date }
-        voucher_number: { type: string }
-        narration: { type: string }
-        idempotency_key: { type: string, format: uuid }
-        ledger_entries:
-          type: array
-          items:
-            $ref: '#/components/schemas/LedgerEntry'
-
-    LedgerEntry:
-      type: object
-      required: [ledger_id, dr_cr_indicator, amount]
-      properties:
-        ledger_id: { type: string, format: uuid }
-        dr_cr_indicator:
-          type: string
-          enum: [Dr, Cr]
-        amount: { type: number }
-        cost_center_allocations:
-          type: array
-          items: { type: object }
-        inventory_allocations:
-          type: array
-          items:
-            $ref: '#/components/schemas/InventoryAllocation'
-        bill_allocations:
-          type: array
-          items:
-            $ref: '#/components/schemas/BillAllocation'
-
-    InventoryAllocation:
-      type: object
-      required: [item_id, godown_id, quantity, rate, amount]
-      properties:
-        item_id: { type: string, format: uuid }
-        godown_id: { type: string, format: uuid }
-        quantity: { type: number }
-        rate: { type: number }
-        amount: { type: number }
-        batch_details: { type: object }
-
-    BillAllocation:
-      type: object
-      required: [allocation_type, amount]
-      properties:
-        allocation_type:
-          type: string
-          enum: [New Ref, Agst Ref, Advance, On Account]
-        reference_name: { type: string }
-        amount: { type: number }
-        credit_period: { type: integer }
+          description: Inventory data.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report_time: { type: string, format: date-time }
+                  total_inventory_value: { type: number, format: float }
+                  stock_items:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        item_id: { type: string, format: uuid }
+                        item_name: { type: string }
+                        stock_group: { type: string }
+                        valuation_method: { type: string }
+                        opening_balance: { type: number, format: float }
+                        inwards_quantity: { type: number, format: float }
+                        outwards_quantity: { type: number, format: float }
+                        closing_balance: { type: number, format: float }
+                        effective_rate: { type: number, format: float }
+                        current_value: { type: number, format: float }
