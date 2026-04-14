@@ -1,0 +1,550 @@
+openapi: 3.0.0
+info:
+  title: Cloud Accounting API
+  description: Comprehensive API specification for a cloud accounting system, providing deterministic endpoints for ledgers, vouchers, inventory, taxation, payroll, and reporting.
+  version: 1.0.0
+servers:
+  - url: https://api.accountingcloud.com
+paths:
+  /api/v1/masters/groups:
+    post:
+      summary: Create an Account Group
+      tags: [Accounting Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountGroup'
+      responses:
+        '201':
+          description: Successfully created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreationResponse'
+
+  /api/v1/masters/ledgers:
+    post:
+      summary: Create an Account Ledger
+      tags: [Accounting Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountLedger'
+      responses:
+        '201':
+          description: Successfully created
+          
+  /api/v1/masters/cost-centers:
+    post:
+      summary: Create a Cost Center
+      tags: [Accounting Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                cost_center_name: { type: string }
+                category_id: { type: string, format: uuid }
+                parent_center_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/inventory/uom:
+    post:
+      summary: Create Unit of Measurement
+      tags: [Inventory Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                symbol: { type: string }
+                formal_name: { type: string }
+                decimal_places: { type: integer }
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/inventory/godowns:
+    post:
+      summary: Create a Godown/Location
+      tags: [Inventory Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                godown_name: { type: string }
+                parent_godown_id: { type: string, format: uuid }
+                address_details: { type: object }
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/inventory/items:
+    post:
+      summary: Create a Stock Item
+      tags: [Inventory Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StockItem'
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/inventory/bom:
+    post:
+      summary: Create Bill of Materials (BOM)
+      tags: [Inventory Masters]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                finished_good_item_id: { type: string, format: uuid }
+                bom_name: { type: string }
+                components:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      item_id: { type: string, format: uuid }
+                      godown_id: { type: string, format: uuid }
+                      quantity: { type: number }
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/vouchers:
+    post:
+      summary: Post a Transaction Voucher
+      tags: [Vouchers]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Voucher'
+      responses:
+        '201':
+          description: Voucher posted successfully
+        '400':
+          description: Validation error (e.g., Debits do not equal Credits)
+
+  /api/v1/invoices/generate:
+    post:
+      summary: Generate an Auto-Calculated GST Invoice
+      tags: [Invoicing]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                party_ledger_id: { type: string, format: uuid }
+                sales_ledger_id: { type: string, format: uuid }
+                items:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      item_id: { type: string, format: uuid }
+                      quantity: { type: number }
+                      discount_percentage: { type: number }
+                place_of_supply: { type: string }
+      responses:
+        '200':
+          description: Generated mathematical voucher payload
+
+  /api/v1/taxes/gst-setup:
+    put:
+      summary: Update GST Rates
+      tags:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entity_id: { type: string, format: uuid }
+                effective_date: { type: string, format: date }
+                hsn_sac_code: { type: string }
+                taxability:
+                  type: string
+                  enum:
+                tax_rates: { type: object }
+                reverse_charge_applicable: { type: boolean }
+      responses:
+        '200':
+          description: GST setup updated
+
+  /api/v1/taxes/e-invoice/generate:
+    post:
+      summary: Generate E-Invoice (IRP integration)
+      tags:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                voucher_id: { type: string, format: uuid }
+                distance_in_km: { type: integer }
+      responses:
+        '200':
+          description: IRN and QR Code generated
+
+  /api/v1/taxes/returns/gstr1:
+    get:
+      summary: Get GSTR-1 Return Payload
+      tags:
+      parameters:
+        - in: query
+          name: from_date
+          schema: { type: string, format: date }
+          required: true
+        - in: query
+          name: to_date
+          schema: { type: string, format: date }
+          required: true
+      responses:
+        '200':
+          description: GSTR-1 structured data
+
+  /api/v1/taxes/reconciliation/gstr2b:
+    post:
+      summary: Auto-reconcile ITC against GSTR-2B JSON
+      tags:
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Raw GSTR-2B JSON from the tax portal
+      responses:
+        '200':
+          description: Reconciliation results (matched, mismatched, missing)
+
+  /api/v1/payroll/employees:
+    post:
+      summary: Create an Employee Master
+      tags: [Payroll]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                employee_name: { type: string }
+                employee_group_id: { type: string, format: uuid }
+                date_of_joining: { type: string, format: date }
+                statutory_details: { type: object }
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/payroll/attendance-types:
+    post:
+      summary: Create Attendance/Production Type
+      tags: [Payroll]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type_name: { type: string }
+                attendance_type:
+                  type: string
+                  enum:
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/payroll/payheads:
+    post:
+      summary: Create a Pay Head
+      tags: [Payroll]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pay_head_name: { type: string }
+                pay_head_type:
+                  type: string
+                  enum:
+                calculation_type:
+                  type: string
+                  enum:
+                calculation_period:
+                  type: string
+                  enum:
+                computation_info: { type: object }
+      responses:
+        '201':
+          description: Successfully created
+
+  /api/v1/payroll/attendance:
+    post:
+      summary: Log Employee Attendance
+      tags: [Payroll]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: object
+                properties:
+                  employee_id: { type: string, format: uuid }
+                  attendance_type_id: { type: string, format: uuid }
+                  value: { type: number }
+                  date: { type: string, format: date }
+      responses:
+        '201':
+          description: Attendance logged
+
+  /api/v1/payroll/process:
+    post:
+      summary: Process Payroll
+      tags: [Payroll]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pay_period_start: { type: string, format: date }
+                pay_period_end: { type: string, format: date }
+                employee_group_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Payroll processed successfully
+          
+  /api/v1/reports/balance-sheet:
+    get:
+      summary: Get Balance Sheet
+      tags:
+      parameters:
+        - in: query
+          name: as_of_date
+          schema: { type: string, format: date }
+          required: true
+        - in: query
+          name: explode_flag
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: Balance Sheet Data
+
+  /api/v1/reports/profit-and-loss:
+    get:
+      summary: Get Profit and Loss Statement
+      tags:
+      parameters:
+        - in: query
+          name: from_date
+          schema: { type: string, format: date }
+          required: true
+        - in: query
+          name: to_date
+          schema: { type: string, format: date }
+          required: true
+      responses:
+        '200':
+          description: P&L Data
+
+  /api/v1/reports/outstanding:
+    get:
+      summary: Get Receivables/Payables Aging
+      tags:
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum:
+          required: true
+        - in: query
+          name: aging_intervals
+          schema:
+            type: array
+            items: { type: integer }
+      responses:
+        '200':
+          description: Outstanding bills report
+
+  /api/v1/reports/daybook:
+    get:
+      summary: Get Day Book (Chronological transactions)
+      tags:
+      parameters:
+        - in: query
+          name: from_date
+          schema: { type: string, format: date }
+        - in: query
+          name: to_date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Day Book Data
+
+  /api/v1/reports/stock-summary:
+    get:
+      summary: Get Real-time Stock Summary
+      tags:
+      responses:
+        '200':
+          description: Location and item-wise stock valuation
+
+  /api/v1/audit/voucher-history/{voucher_id}:
+    get:
+      summary: Get MCA-compliant Voucher Edit History
+      tags: [Audit]
+      parameters:
+        - in: path
+          name: voucher_id
+          schema: { type: string, format: uuid }
+          required: true
+      responses:
+        '200':
+          description: Array of historical voucher versions
+
+components:
+  schemas:
+    CreationResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    AccountGroup:
+      type: object
+      required: [group_name, parent_group_id]
+      properties:
+        group_name: { type: string }
+        parent_group_id: { type: string, format: uuid }
+        alias: { type: string }
+        nature_of_group:
+          type: string
+          enum:
+        affect_gross_profit: { type: boolean }
+
+    AccountLedger:
+      type: object
+      required: [ledger_name, parent_group_id]
+      properties:
+        ledger_name: { type: string }
+        parent_group_id: { type: string, format: uuid }
+        opening_balance: { type: number }
+        dr_cr_indicator:
+          type: string
+          enum:
+        maintain_bill_wise: { type: boolean }
+        credit_days: { type: integer }
+        mailing_details: { type: object }
+        tax_information: { type: object }
+        bank_details: { type: object }
+
+    StockItem:
+      type: object
+      required: [item_name, uom_id, costing_method, gst_setup]
+      properties:
+        item_name: { type: string }
+        part_number: { type: string }
+        stock_group_id: { type: string, format: uuid }
+        uom_id: { type: string, format: uuid }
+        costing_method:
+          type: string
+          enum:
+        maintain_batches: { type: boolean }
+        track_expiry_dates: { type: boolean }
+        reorder_level: { type: integer }
+        gst_setup: { type: object }
+
+    Voucher:
+      type: object
+      required: [voucher_type, voucher_date, idempotency_key, ledger_entries]
+      properties:
+        voucher_type:
+          type: string
+          enum:
+        voucher_date: { type: string, format: date }
+        voucher_number: { type: string }
+        narration: { type: string }
+        idempotency_key: { type: string, format: uuid }
+        ledger_entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/LedgerEntry'
+
+    LedgerEntry:
+      type: object
+      required: [ledger_id, dr_cr_indicator, amount]
+      properties:
+        ledger_id: { type: string, format: uuid }
+        dr_cr_indicator:
+          type: string
+          enum:
+        amount: { type: number }
+        cost_center_allocations:
+          type: array
+          items: { type: object }
+        inventory_allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryAllocation'
+        bill_allocations:
+          type: array
+          items:
+            $ref: '#/components/schemas/BillAllocation'
+
+    InventoryAllocation:
+      type: object
+      required: [item_id, godown_id, quantity, rate, amount]
+      properties:
+        item_id: { type: string, format: uuid }
+        godown_id: { type: string, format: uuid }
+        quantity: { type: number }
+        rate: { type: number }
+        amount: { type: number }
+        batch_details: { type: object }
+
+    BillAllocation:
+      type: object
+      required: [allocation_type, amount]
+      properties:
+        allocation_type:
+          type: string
+          enum:
+        reference_name: { type: string }
+        amount: { type: number }
+        credit_period: { type: integer }
